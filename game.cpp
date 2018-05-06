@@ -2,7 +2,7 @@
 #include "hero.hpp"
 #include "alienswave.hpp"
 #include "bullet.hpp"
-#include "baffles.hpp"
+#include "shield.hpp"
 #include <stdexcept>
 
 Game::Game()
@@ -434,7 +434,7 @@ void Game::createCharacters()
     characterHeight, alienBulletPath, alienBulletWidth, alienBulletHeight, shot_, explosion_);
     redUFO_->hide();
     //Создаем щиты
-    baffles_ = new Baffles(FIRST_BAFFLE_LEFT, FIRST_BAFFLE_TOP, wallsArrangement, pathToWallImg, wallWidth, wallHeight, explosion_);
+    baffles_ = new Shield(FIRST_BAFFLE_LEFT, FIRST_BAFFLE_TOP, wallsArrangement, pathToWallImg, wallWidth, wallHeight, explosion_);
 }
 
 void Game::moveSpaceshipBullets()

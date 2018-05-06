@@ -7,8 +7,9 @@
 class Bullet : public Entity
 {
 public:
+    enum class Type { Ship, Enemy };
     explicit Bullet(int x, int y, int vel_x, int vel_y, Direction dir,
-                    ALLEGRO_BITMAP* bitmap, int width, int height);
+                    Type type, BitmapManager &bitmapManager);
     int getWidth() const;
     int getHeight() const;
     void draw();

@@ -7,7 +7,7 @@
 class Hero;
 class Bullet;
 class AliensWave;
-class Baffles;
+class Shield;
 
 class Game
 {
@@ -86,7 +86,7 @@ private:
     Hero *spaceship_;
     Hero *redUFO_;
     AliensWave *aliensWave_;
-    Baffles *baffles_;
+    Shield *baffles_;
     std::vector<Bullet*> spaceshipBullets_;
     std::vector<Bullet*> aliensBullets_;
     bool isGameStarted_ = false;

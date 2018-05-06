@@ -1,9 +1,8 @@
-#include "baffles.hpp"
-#include "wall.hpp"
-#include "bullet.hpp"
+#include "shield.hpp"
 
-Baffles::Baffles(int x, int y, const charMatrix &arrangement, const std::string &pathToWallBitmap,
-         int w_width, int w_height, ALLEGRO_SAMPLE *explosion)
+Shield::Shield(int x, int y, const charMatrix &arrangement, int wallWidth, int wallHeight,
+                 BitmapManager &bitmapManager,
+                 SampleManager &sampleManager)
 {
     for(int i = 0; i < int(arrangement.size()); ++i)
     {
@@ -15,38 +14,32 @@ Baffles::Baffles(int x, int y, const charMatrix &arrangement, const std::string 
                 case ' ' :
                     continue;
                 case 'A' :
-                    currWallType = WallType::TOP_LEFT;
+                    currWallType = Wall::Type::TOP_LEFT;
                     break;
                 case 'D' :
-                    currWallType = WallType::LEFT;
+                    currWallType = Wall::Type::LEFT;
                     break;
                 case 'C' :
-                    currWallType = WallType::TOP_RIGHT;
+                    currWallType = Wall::Type::TOP_RIGHT;
                     break;
                 case 'E' :
-                    currWallType = WallType::RIGHT;
+                    currWallType = Wall::Type::RIGHT;
                     break;
                 case 'B' :
                 default :
-                    currWallType = WallType::CENTRAL;
+                    currWallType = Wall::Type::CENTRAL;
                     break;
             }
 
-            Wall *wall = new Wall(currWallType, x + j * w_width, y + i * w_height,
-                                  pathToWallBitmap, w_width, w_height, explosion);
-            walls_.push_back(wall);
+            auto wall = std::make_unique<Wall>(currWallType, x + j * wallWidth,
+                                               y + i * wallHeight,
+                                               bitmapManager, sampleManager);
+            walls_.push_back(std::move(wall));
         }
     }
 }
 
-Baffles::~Baffles()
-{
-    for(auto &wall : walls_)
-        if(wall != nullptr)
-            delete wall;
-}
-
-void Baffles::checkCollisions(std::vector<Bullet*> bullets)
+void Shield::checkCollisions(std::vector<std::unique_ptr<Bullet>> &bullets)
 {
     for(auto &bullet : bullets)
     {
@@ -64,7 +57,7 @@ void Baffles::checkCollisions(std::vector<Bullet*> bullets)
     }
 }
 
-void Baffles::draw() const
+void Shield::draw() const
 {
     for(auto &wall : walls_)
         wall->draw();

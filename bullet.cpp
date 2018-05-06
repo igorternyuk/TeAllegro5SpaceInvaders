@@ -1,10 +1,19 @@
 #include "bullet.hpp"
 
 Bullet::Bullet(int x, int y, int vel_x, int vel_y, Direction dir,
-               ALLEGRO_BITMAP *bitmap, int width, int height) :
-    Entity(x, y, vel_x, vel_y, dir), bitmap_(bitmap),
-          width_(width), height_(height)
-{}
+               Type type, BitmapManager &bitmapManager) :
+    Entity(x, y, vel_x, vel_y, dir)
+{
+    if(type == Type::Ship){
+        bitmap_ = bitmapManager.get(BitmapID::ShipBullet).get();
+        width_ = 6;
+        height_ = 12;
+    } else if(type == Type::Enemy){
+        bitmap_ = bitmapManager.get(BitmapID::EnemyBullet).get();
+        width_ = 12;
+        height_ = 12;
+    }
+}
 
 int Bullet::getWidth() const
 {

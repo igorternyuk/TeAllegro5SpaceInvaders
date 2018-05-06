@@ -1,16 +1,14 @@
 #include "wall.hpp"
 #include "bullet.hpp"
 
-Wall::Wall(WallType type, int x, int y, const std::string &pathToBitmap, int width, int height, ALLEGRO_SAMPLE *explosion) :
-      type_(type), x_(x), y_(y), bitmap_(al_load_bitmap(pathToBitmap.c_str())), width_(width),
-      height_(height), numHits_(0), explosion_(explosion)
+Wall::Wall(Type type, int x, int y, int width, int height,
+           BitmapManager &bitmapManager,
+           SampleManager &sampleManager) :
+      type_(type), x_(x), y_(y),
+      width_(width), height_(height),
+      bitmap_(bitmapManager.get(BitmapID::Walls)),
+      explosion_(sampleManager.get(SampleID::Explosion))
 {}
-
-Wall::~Wall()
-{
-    if(bitmap_ != nullptr)
-        al_destroy_bitmap(bitmap_);
-}
 
 int Wall::getX() const
 {
@@ -62,11 +60,13 @@ bool Wall::isDestroyed() const
 void Wall::draw() const
 {
     if(numHits_ < MAX_HITS_COUNT)
-        al_draw_bitmap_region(bitmap_, numHits_ * width_, static_cast<int>(type_) * height_, width_, height_, x_, y_, 0);
+        al_draw_bitmap_region(bitmap_, numHits_ * width_,
+                              static_cast<int>(type_) * height_,
+                              width_, height_, x_, y_, 0);
 }
 
 void Wall::playExplosionSound()
 {
-    if(explosion_ != nullptr)
+    //if(explosion_ != nullptr)
         al_play_sample(explosion_, 1.0f, 0.0f, 1.0, ALLEGRO_PLAYMODE_ONCE, 0);
 }

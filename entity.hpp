@@ -28,5 +28,4 @@ private:
     Direction dir_;
     bool isActive_ = true;
     bool isHidden_ = false;
-    ALLEGRO_SAMPLE *explosion_;
 };
