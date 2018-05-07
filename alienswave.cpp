@@ -1,4 +1,5 @@
 #include "alienswave.hpp"
+#include <algorithm>
 
 AliensWave::AliensWave(int initX, int initY, const charMatrix &arrangement,
                        int vStep, int hStep, int velocity_x, int velocity_y,
@@ -106,7 +107,7 @@ void AliensWave::shoot(std::vector<std::unique_ptr<Bullet> > &bullets)
             do
             {
                 randNum = rand() % aliensWave_.size();
-            }while(!aliensWave_[randNum]->isActive());
+            } while(!aliensWave_[randNum]->isActive());
             aliensWave_[randNum]->shoot(bullets);
         }
     }
@@ -130,6 +131,7 @@ void AliensWave::checkCollisions(const std::vector<std::unique_ptr<Bullet>> &bul
             }
         }
     }
+    clearDeadAliens();
 }
 
 bool AliensWave::isAlive() const
@@ -166,5 +168,12 @@ bool AliensWave::isEnoughSpaceForRedUFO() const
 void AliensWave::draw() const
 {
     for(const auto &alien : aliensWave_)
-         alien->draw();
+        alien->draw();
+}
+
+void AliensWave::clearDeadAliens()
+{
+    auto it = std::remove_if(aliensWave_.begin(), aliensWave_.end(),
+                             [](auto &alien) { return !alien->isActive(); });
+    aliensWave_.erase(it, aliensWave_.end());
 }

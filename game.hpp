@@ -15,7 +15,6 @@ class Game
 public:
 
     explicit Game();
-    ~Game();
     void startPage(bool &startGame);
     void run();
 private:
@@ -46,7 +45,14 @@ private:
         BULLET_VELOCITY = 8
     };
 
-    const std::string WINDOW_TITLE = "SpaceInviders";
+    enum class GameState
+    {
+        PLAY,
+        PAUSE,
+        GAME_OVER
+    };
+
+    const char* WINDOW_TITLE = "SpaceInviders";
     const std::string GAME_PAUSED_TEXT = "GAME PAUSED";
     const std::string LOST_MESSAGE = "YOU LOST";
     int redNFO_ticker_ = 0;
@@ -62,31 +68,34 @@ private:
     BitmapManager bitmaps_;
     FontManager fonts_;
     SampleManager samples_;
-    ALLEGRO_DISPLAY* display_;
-    //Create map of timers
+    my_unique_ptr<ALLEGRO_DISPLAY> upDisplay_;
+    my_unique_ptr<ALLEGRO_SAMPLE_INSTANCE> upBackgroundInstance_;
+    ALLEGRO_DISPLAY *display_;
+    ALLEGRO_SAMPLE_INSTANCE *backgroundInstance_;
+
     enum class TimerID
     {
         spaceShip,
         spaceShipBullets,
         alienWave,
-        alienWaveShooting,
-        alienBullets
+        alienBullets,
+        alienWaveShooting
     };
 
     std::map<TimerID, std::unique_ptr<Allegro5Timer>> timers_;
-    ALLEGRO_SAMPLE_INSTANCE *backgroundInstance_;
-
     std::unique_ptr<Hero> spaceship_;
     std::unique_ptr<Hero> redUFO_;
     std::unique_ptr<AliensWave> aliensWave_;
     std::unique_ptr<Shield> shield_;
     std::vector<std::unique_ptr<Bullet>> spaceshipBullets_;
     std::vector<std::unique_ptr<Bullet>> aliensBullets_;
-    bool isGameStarted_ = false;
-    bool isGameOver_ = false;
-    bool isGamePaused_ = false;
-    int level_ = 1;
-    int score_ = 0;
+    my_unique_ptr<ALLEGRO_EVENT_QUEUE> eventQueue_;
+    ALLEGRO_KEYBOARD_STATE keyState_;
+    bool isRunning { true };
+    bool draw { false };
+    GameState gameState_ { GameState::PLAY };
+    int level_ {1};
+    int score_ {0};
 
     //Settings
     std::string pathToSprite;
@@ -101,7 +110,8 @@ private:
     charMatrix wallsArrangement;
 
 private:
-    void prepareNewGame(int level);
+    void startNewGame(int level);
+    void togglePause();
     bool loadSettings();
     void loadBitmaps();
     void loadFonts();
@@ -113,6 +123,9 @@ private:
 
     void startAllTimers();
     void stopAllTimers();
+    void updatePhase();
+    void clearInactiveObjects();
+    void renderPhase();
     void drawAllBullets() const;
     void drawScore() const;
     void drawSpaceShipLives() const;

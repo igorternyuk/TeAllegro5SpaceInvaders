@@ -32,5 +32,7 @@ private:
     int strenth_;    
     std::vector<std::unique_ptr<Hero>> aliensWave_;
     bool isTouchPlanet_ = false;
+private:
+    void clearDeadAliens();
 };
 
