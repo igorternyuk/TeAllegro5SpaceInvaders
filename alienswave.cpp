@@ -1,50 +1,51 @@
 #include "alienswave.hpp"
-#include "hero.hpp"
-#include "bullet.hpp"
 
-AliensWave::AliensWave(int initX, int initY, const charMatrix &arrangement, int vDist, int hDist,
-    int velocity_x, int velocity_y, Direction dir, int topLimit, int leftLimit, int bottomLimit, int rightLimit, int strenth,
-    std::string pathToBitmap, int a_width, int a_height, int bulletVelocity, std::string pathToBulletBitmap,
-    int b_width, int b_height, ALLEGRO_SAMPLE *shot, ALLEGRO_SAMPLE *explosion) :
-    velocity_x_(velocity_x), velocity_y_(velocity_y), dir_(dir), topLimit_(topLimit),
-    leftLimit_(leftLimit), bottomLimit_(bottomLimit), rightLimit_(rightLimit),
-    strenth_(strenth), a_width_(a_width), a_height_(a_height)
+AliensWave::AliensWave(int initX, int initY, const charMatrix &arrangement,
+                       int vStep, int hStep, int velocity_x, int velocity_y,
+                       Direction dir, int topLimit, int leftLimit,
+                       int bottomLimit, int rightLimit, int strenth,
+                       int a_width, int a_height, int bulletVelocity,
+                       BitmapManager &bitmapManager,
+                       SampleManager &sampleManager) :
+    velocity_x_(velocity_x), velocity_y_(velocity_y),
+    a_width_(a_width), a_height_(a_height), dir_(dir),
+    topLimit_(topLimit), leftLimit_(leftLimit),
+    bottomLimit_(bottomLimit),
+    rightLimit_(rightLimit), strenth_(strenth)
 {
     for(int i = 0; i < int(arrangement.size()); ++i)
     {
         for(int j = 0; j < int(arrangement[i].size()); ++j)
         {
-            CharacterType type;
+            Hero::Type type;
             switch(arrangement[i][j])
             {
                 case ' ' :
                     continue;
                 case 'D' :
-                    type = CharacterType::ROMBUS;
+                    type = Hero::Type::ROMBUS;
                     break;
                 case 'R' :
-                    type = CharacterType::ROBOT;
+                    type = Hero::Type::ROBOT;
                     break;
                 case 'E' :
-                    type = CharacterType::ELEPHANT;
+                    type = Hero::Type::ELEPHANT;
                     break;
                 default:
-                    type = CharacterType::ROBOT;
+                    type = Hero::Type::ROBOT;
                     break;
             }
-            Hero *alien = new Hero(type, initX + j * (a_width_ + hDist),
-            initY + i * (a_height_ + vDist), velocity_x_, velocity_y_, Direction::RIGHT, 1,
-            bulletVelocity, pathToBitmap, a_width_, a_height_, pathToBulletBitmap, b_width,
-            b_height, shot, explosion);
-            aliensWave_.push_back(alien);
+            //TODO smart pointer
+            auto ax = initX + j * (a_width_ + hStep);
+            auto ay = initY + i * (a_height_ + vStep);
+            auto alien = std::make_unique<Hero>(
+                type, ax, ay, velocity_x_, velocity_y_,
+                Direction::RIGHT, a_width_, a_height_,
+                1, bulletVelocity, bitmapManager,
+                sampleManager);
+            aliensWave_.push_back(std::move(alien));
         }
     }
-}
-
-AliensWave::~AliensWave()
-{
-    for(auto &alien : aliensWave_)
-        delete alien;
 }
 
 void AliensWave::move()
@@ -95,7 +96,7 @@ void AliensWave::move()
     }
 }
 
-void AliensWave::shoot(std::vector<Bullet*> &bullets)
+void AliensWave::shoot(std::vector<std::unique_ptr<Bullet> > &bullets)
 {
     if(isAlive())
     {
@@ -111,7 +112,8 @@ void AliensWave::shoot(std::vector<Bullet*> &bullets)
     }
 }
 
-void AliensWave::checkCollisions(const std::vector<Bullet*> &bullets, int &scoreIncrement)
+void AliensWave::checkCollisions(const std::vector<std::unique_ptr<Bullet>> &bullets,
+                                 int &scoreIncrement)
 {
     for(auto &bullet : bullets)
     {
@@ -119,7 +121,7 @@ void AliensWave::checkCollisions(const std::vector<Bullet*> &bullets, int &score
         for(auto &alien : aliensWave_)
         {
             if(!alien->isActive()) continue;
-            if(alien->isCollision(bullet))
+            if(alien->isCollision(bullet.get()))
             {
                 scoreIncrement += alien->getScoreIncrement();
                 alien->damage();
@@ -152,7 +154,7 @@ bool AliensWave::isTouchPlanet() const
 bool AliensWave::isEnoughSpaceForRedUFO() const
 {
     bool result = true;
-    for(auto alien : aliensWave_)
+    for(auto &alien : aliensWave_)
         if(alien->getY() <= MIN_TOP_FOR_ENOUGH_SPACE_FOR_NFO)
         {
             result = false;

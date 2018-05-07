@@ -6,8 +6,8 @@ Wall::Wall(Type type, int x, int y, int width, int height,
            SampleManager &sampleManager) :
       type_(type), x_(x), y_(y),
       width_(width), height_(height),
-      bitmap_(bitmapManager.get(BitmapID::Walls)),
-      explosion_(sampleManager.get(SampleID::Explosion))
+      bitmap_(bitmapManager.get(BitmapID::Walls).get()),
+      explosion_(sampleManager.get(SampleID::Explosion).get())
 {}
 
 int Wall::getX() const

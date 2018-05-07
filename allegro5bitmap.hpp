@@ -10,6 +10,8 @@ public:
     explicit Allegro5Bitmap();
     bool loadFromFile(const std::string &fileName);
     ALLEGRO_BITMAP* get() const;
+    int width() const;
+    int height() const;
 private:
     my_unique_ptr<ALLEGRO_BITMAP> mBitmap;
 };

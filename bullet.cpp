@@ -6,13 +6,11 @@ Bullet::Bullet(int x, int y, int vel_x, int vel_y, Direction dir,
 {
     if(type == Type::Ship){
         bitmap_ = bitmapManager.get(BitmapID::ShipBullet).get();
-        width_ = 6;
-        height_ = 12;
     } else if(type == Type::Enemy){
         bitmap_ = bitmapManager.get(BitmapID::EnemyBullet).get();
-        width_ = 12;
-        height_ = 12;
     }
+    width_ = al_get_bitmap_width(bitmap_);
+    height_ = al_get_bitmap_height(bitmap_);
 }
 
 int Bullet::getWidth() const

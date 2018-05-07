@@ -14,7 +14,8 @@ SOURCES += main.cpp \
     allegro5sample.cpp \
     allegro5initializer.cpp \
     hero.cpp \
-    shield.cpp
+    shield.cpp \
+    allegro5timer.cpp
 
 LIBS += `pkg-config --libs allegro-5.0 allegro_dialog-5.0 allegro_ttf-5.0 allegro_font-5.0 allegro_primitives-5.0 allegro_image-5.0 allegro_audio-5.0 allegro_acodec-5.0`
 
@@ -33,7 +34,8 @@ HEADERS += \
     allegro5sample.hpp \
     allegro5initializer.hpp \
     hero.hpp \
-    shield.hpp
+    shield.hpp \
+    allegro5timer.hpp
 
 DISTFILES += \
     resourcemanager.impl

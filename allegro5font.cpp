@@ -10,7 +10,7 @@ bool Allegro5Font::loadFromFile(const std::__cxx11::string &fileName, int size)
     auto font = al_load_font(fileName.c_str(), size, 0);
     if(!font)
         return false;
-    auto ptr = std::make_unique<ALLEGRO_FONT>(font, al_destroy_font);
+    my_unique_ptr<ALLEGRO_FONT> ptr{ font, al_destroy_font };
     mFont.swap(ptr);
     return true;
 }

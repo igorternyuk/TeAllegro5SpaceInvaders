@@ -2,12 +2,13 @@
 
 #include "utils.hpp"
 #include "allegro5initializer.hpp"
+#include "allegro5timer.hpp"
+#include "hero.hpp"
+#include "alienswave.hpp"
+#include "bullet.hpp"
+#include "shield.hpp"
 #include <memory>
-
-class Hero;
-class Bullet;
-class AliensWave;
-class Shield;
+#include <map>
 
 class Game
 {
@@ -45,17 +46,10 @@ private:
         BULLET_VELOCITY = 8
     };
 
-
     const std::string WINDOW_TITLE = "SpaceInviders";
     const std::string GAME_PAUSED_TEXT = "GAME PAUSED";
     const std::string LOST_MESSAGE = "YOU LOST";
     const std::string PATH_TO_SETTINGD_FILE = "settings.txt";
-
-    Allegro5Initializer allegro5Initializer_;
-    BitmapManager bitmaps_;
-    FontManager fonts_;
-    SampleManager samples_;
-
     int redNFO_ticker_ = 0;
     const int MAX_RED_NFO_DELAY = 100;
     int randDelay_ = rand() % MAX_RED_NFO_DELAY;
@@ -65,30 +59,30 @@ private:
     const float ALIENS_BULLETS_TIMER_TIMEOUT = 0.05f;
     const float ALIENS_SHOOTING_TIMER_TIMEOUT = 2.0f;
 
-    ALLEGRO_DISPLAY *display_;
-    ALLEGRO_BITMAP *background_;
-    ALLEGRO_FONT *smallFont_;
-    ALLEGRO_FONT *middleFont_;
-    ALLEGRO_FONT *largeFont_;
-    ALLEGRO_BITMAP *startPage_;
-    ALLEGRO_BITMAP *oneLifeBitmap_;
-    ALLEGRO_BITMAP *levelFlagBitmap_;
-    ALLEGRO_TIMER *spaceshipTimer_;
-    ALLEGRO_TIMER *spaceshipBulletsTimer_;
-    ALLEGRO_TIMER *aliensWaveTimer_;
-    ALLEGRO_TIMER *aliensShootingTimer_;
-    ALLEGRO_TIMER *aliensBulletsTimer_;
-    ALLEGRO_SAMPLE *shot_;
-    ALLEGRO_SAMPLE *explosion_;
-    ALLEGRO_SAMPLE *backgroundMusic_;
+    Allegro5Initializer allegro5Initializer_;
+    BitmapManager bitmaps_;
+    FontManager fonts_;
+    SampleManager samples_;
+    ALLEGRO_DISPLAY* display_;
+    //Create map of timers
+    enum class TimerID
+    {
+        spaceShip,
+        spaceShipBullets,
+        alienWave,
+        alienWaveShooting,
+        alienBullets
+    };
+
+    std::map<TimerID, Allegro5Timer> timers_;
     ALLEGRO_SAMPLE_INSTANCE *backgroundInstance_;
 
-    Hero *spaceship_;
-    Hero *redUFO_;
-    AliensWave *aliensWave_;
-    Shield *baffles_;
-    std::vector<Bullet*> spaceshipBullets_;
-    std::vector<Bullet*> aliensBullets_;
+    std::unique_ptr<Hero> spaceship_;
+    std::unique_ptr<Hero> redUFO_;
+    std::unique_ptr<AliensWave> aliensWave_;
+    std::unique_ptr<Shield> baffles_;
+    std::vector<std::unique_ptr<Bullet>> spaceshipBullets_;
+    std::vector<std::unique_ptr<Bullet>> aliensBullets_;
     bool isGameStarted_ = false;
     bool isGameOver_ = false;
     bool isGamePaused_ = false;
@@ -96,7 +90,7 @@ private:
     int score_ = 0;
 
 private:
-    void init();
+    void prepareNewGame(int level);
     bool loadSettings(const std::string &pathToSettingsFile, std::string &pathToSprite,
          int &characterWidth, int &characterHeight, charMatrix &aliensArrangement,
          std::string &spaceshipBulletPath, int &spaceShipBulletWidth, int &spaceShipBulletHeight,
@@ -105,14 +99,14 @@ private:
     void loadBitmaps();
     void loadFonts();
     void loadSamples();
-    void createCharacters();
+    void createTimers();
+    void createGameObjects();
     void moveSpaceshipBullets();
     void moveAliensBullets();
-    void prepareNewGame(int level);
+
     void startAllTimers();
     void stopAllTimers();
     void drawAllBullets() const;
     void drawScore() const;
     void drawSpaceShipLives() const;
-    void deleteBullets();
 };

@@ -1,57 +1,57 @@
 #include "game.hpp"
-#include "hero.hpp"
-#include "alienswave.hpp"
-#include "bullet.hpp"
-#include "shield.hpp"
+
+#include <algorithm>
+#include <fstream>
+#include <sstream>
 #include <stdexcept>
 
 Game::Game()
 {
+    display_ = al_create_display(WINDOW_WIDTH, WINDOW_HEIGHT);
+
+    if(!display_)
+    {
+         throw std::runtime_error("Could not create Allegro Window");
+    }
+
+    al_set_window_position(display_, WINDOW_LEFT, WINDOW_TOP);
+    al_set_window_title(display_, WINDOW_TITLE);
+
     loadBitmaps();
     loadFonts();
     loadSamples();
 
-    backgroundMusic_ = al_load_sample(PATH_TO_BACKGROUND_MUSIC.c_str());
-    backgroundInstance_ = al_create_sample_instance(backgroundMusic_);
+    backgroundInstance_ = al_create_sample_instance(samples_.get(SampleID::Bgm).get());
     al_set_sample_instance_playmode(backgroundInstance_ , ALLEGRO_PLAYMODE_LOOP);
     al_attach_sample_instance_to_mixer(backgroundInstance_ , al_get_default_mixer());
-    //Создаем таймеры
-    spaceshipTimer_ = al_create_timer(SPACESHIP_TIMER_TIMEOUT);
-    spaceshipBulletsTimer_ = al_create_timer(SPACESHIP_BULLETS_TIMER_TIMEOUT);
-    aliensWaveTimer_ = al_create_timer(ALIENS_WAVE_TIMER_TIMEOUT);
-    aliensBulletsTimer_ = al_create_timer(ALIENS_BULLETS_TIMER_TIMEOUT);
-    aliensShootingTimer_ = al_create_timer(ALIENS_SHOOTING_TIMER_TIMEOUT);
-    createCharacters();
+
+    createTimers();
+    createGameObjects();
 }
 
 Game::~Game()
 {
-    al_destroy_timer(spaceshipTimer_);
+    /*al_destroy_timer(spaceshipTimer_);
     al_destroy_timer(aliensWaveTimer_);
     al_destroy_timer(spaceshipBulletsTimer_);
     al_destroy_timer(aliensShootingTimer_);
-    al_destroy_timer(aliensBulletsTimer_);
-    al_destroy_sample(shot_);
-    al_destroy_sample(explosion_);
-    al_destroy_sample(backgroundMusic_);
+    al_destroy_timer(aliensBulletsTimer_);*/
     al_destroy_sample_instance(backgroundInstance_);
-    //al_destroy_timer(redUFOTimer_);
-    deleteBullets();
-    delete spaceship_;
-    delete aliensWave_;
-    delete redUFO_;
-    delete baffles_;
+    al_destroy_display(display_);
 }
 
 void Game::run()
 {
     ALLEGRO_KEYBOARD_STATE keyState;
     ALLEGRO_EVENT_QUEUE *event_queue = al_create_event_queue();
-    al_register_event_source(event_queue, al_get_timer_event_source(spaceshipTimer_));
+    for(auto &timer: timers_){
+        al_register_event_source(event_queue, timer.second.getEventSource());
+    }
+    /*al_register_event_source(event_queue, al_get_timer_event_source(spaceshipTimer_));
     al_register_event_source(event_queue, al_get_timer_event_source(spaceshipBulletsTimer_));
     al_register_event_source(event_queue, al_get_timer_event_source(aliensWaveTimer_));
     al_register_event_source(event_queue, al_get_timer_event_source(aliensShootingTimer_));
-    al_register_event_source(event_queue, al_get_timer_event_source(aliensBulletsTimer_));
+    al_register_event_source(event_queue, al_get_timer_event_source(aliensBulletsTimer_));*/
     al_register_event_source(event_queue, al_get_display_event_source(display_));
     al_register_event_source(event_queue, al_get_keyboard_event_source());
 
@@ -160,23 +160,24 @@ void Game::run()
                 baffles_->checkCollisions(aliensBullets_);
             }
             //Удаляем взорвавшиеся снаряды чтобы слишком не накапливались в векторах
-            auto spaceship_bullets_iterator = std::remove_if(spaceshipBullets_.begin(), spaceshipBullets_.end(),
-                                   [](Bullet *bullet)
-                                    {
-                                        bool isExploded = !bullet->isActive();
-                                        if(isExploded) delete bullet;
-                                        return isExploded;
-                                    });
+            auto spaceship_bullets_iterator =
+                    std::remove_if(spaceshipBullets_.begin(),
+                                   spaceshipBullets_.end(),
+                                   [](auto &bullet)
+                                   {
+                                        return !bullet->isActive();
+                                   }
+            );
             spaceshipBullets_.erase(spaceship_bullets_iterator, spaceshipBullets_.end());
 
             //std::cout << "spaceshipBullets_.size() = " << spaceshipBullets_.size() << std::endl;
-            auto aliens_bullets_iterator = std::remove_if(aliensBullets_.begin(), aliensBullets_.end(),
-                                   [](Bullet *bullet)
-                                    {
-                                        bool isExploded = !bullet->isActive();
-                                        if(isExploded) delete bullet;
-                                        return isExploded;
-                                    });
+            auto aliens_bullets_iterator
+                    = std::remove_if(aliensBullets_.begin(),
+                                     aliensBullets_.end(),
+                                     [](auto &bullet)
+                                      {
+                                          return !bullet->isActive();
+                                      });
             aliensBullets_.erase(aliens_bullets_iterator, aliensBullets_.end());
 
             //std::cout << "aliensBullets_.size() = " << aliensBullets_.size() << std::endl;
@@ -191,7 +192,8 @@ void Game::run()
         }
         if(draw)
         {
-            al_draw_bitmap(background_, 0, 0, 0);
+            al_draw_bitmap(bitmaps_.get(BitmapID::Background).get(),
+                           0, 0, 0);
             drawScore();
             drawSpaceShipLives();
             baffles_->draw();
@@ -200,9 +202,13 @@ void Game::run()
             redUFO_->draw();
             drawAllBullets();
             if(isGamePaused_ && !isGameOver_)
-                al_draw_text(largeFont_, al_map_rgb(255, 255, 0), 100, 270, 0, GAME_PAUSED_TEXT.c_str());
+                al_draw_text(fonts_.get(FontID::Large).get(),
+                             al_map_rgb(255, 255, 0),
+                             100, 270, 0, GAME_PAUSED_TEXT.c_str());
             else if(isGameOver_)
-                    al_draw_text(largeFont_, al_map_rgb(255, 0, 0), 150, 270, 0, LOST_MESSAGE.c_str());
+                    al_draw_text(fonts_.get(FontID::Large).get(),
+                                 al_map_rgb(255, 0, 0), 150, 270,
+                                 0, LOST_MESSAGE.c_str());
             al_flip_display();
             al_clear_to_color(al_map_rgb(0, 0, 0));
         }
@@ -401,7 +407,26 @@ void Game::loadSamples()
     al_reserve_samples(50);
 }
 
-void Game::createCharacters()
+void Game::createTimers()
+{
+    /*
+    my_unique_ptr<ALLEGRO_TIMER> spaceshipTimer_;
+    my_unique_ptr<ALLEGRO_TIMER> spaceshipBulletsTimer_;
+    my_unique_ptr<ALLEGRO_TIMER> aliensWaveTimer_;
+    my_unique_ptr<ALLEGRO_TIMER> aliensShootingTimer_;
+    my_unique_ptr<ALLEGRO_TIMER> aliensBulletsTimer_;*/
+
+    //Создаем таймеры
+    Allegro5Timer spaceshipTimer(SPACESHIP_TIMER_TIMEOUT);
+    timers_.insert(std::make_pair(TimerID::spaceShip, spaceshipTimer));
+    spaceshipTimer_ = al_create_timer(SPACESHIP_TIMER_TIMEOUT);
+    spaceshipBulletsTimer_ = al_create_timer(SPACESHIP_BULLETS_TIMER_TIMEOUT);
+    aliensWaveTimer_ = al_create_timer(ALIENS_WAVE_TIMER_TIMEOUT);
+    aliensBulletsTimer_ = al_create_timer(ALIENS_BULLETS_TIMER_TIMEOUT);
+    aliensShootingTimer_ = al_create_timer(ALIENS_SHOOTING_TIMER_TIMEOUT);
+}
+
+void Game::createGameObjects()
 {
     std::string pathToSprite;
     int characterWidth, characterHeight;
@@ -434,7 +459,8 @@ void Game::createCharacters()
     characterHeight, alienBulletPath, alienBulletWidth, alienBulletHeight, shot_, explosion_);
     redUFO_->hide();
     //Создаем щиты
-    baffles_ = new Shield(FIRST_BAFFLE_LEFT, FIRST_BAFFLE_TOP, wallsArrangement, pathToWallImg, wallWidth, wallHeight, explosion_);
+    baffles_ = new Shield(FIRST_BAFFLE_LEFT, FIRST_BAFFLE_TOP, wallsArrangement,
+                          pathToWallImg, wallWidth, wallHeight, explosion_);
 }
 
 void Game::moveSpaceshipBullets()
@@ -443,7 +469,7 @@ void Game::moveSpaceshipBullets()
     {
         if(!b->isActive()) continue;
         b->move(Direction::UP);
-        if(redUFO_->isActive() && redUFO_->isCollision(b))
+        if(redUFO_->isActive() && redUFO_->isCollision(b.get()))
         {
             score_ += redUFO_->getScoreIncrement();
             b->explode();
@@ -461,7 +487,7 @@ void Game::moveAliensBullets()
     {
         if(!b->isActive()) continue;
         b->move(Direction::DOWN);
-        if(spaceship_->isCollision(b))
+        if(spaceship_->isCollision(b.get()))
         {
             b->explode();
             spaceship_->damage();
@@ -483,33 +509,36 @@ void Game::prepareNewGame(int level)
     level_ = level;
     if(level_ == 1)
         score_ = 0;
-    delete spaceship_;
-    delete aliensWave_;
-    delete baffles_;
-    delete redUFO_;
-    deleteBullets();
-    createCharacters();
+    createGameObjects();
     redNFO_ticker_ = 0;
     randDelay_ = rand() % MAX_RED_NFO_DELAY;
 }
 
 void Game::startAllTimers()
 {
-    al_start_timer(spaceshipTimer_);
-    al_start_timer(spaceshipBulletsTimer_);
-    al_start_timer(aliensWaveTimer_);
-    al_start_timer(aliensShootingTimer_);
-    al_start_timer(aliensBulletsTimer_);
+    for(auto &timer: timers)
+    {
+        timer.start();
+    }
+    /*al_start_timer(spaceshipTimer_.get());
+    al_start_timer(spaceshipBulletsTimer_.get());
+    al_start_timer(aliensWaveTimer_.get());
+    al_start_timer(aliensShootingTimer_.get());
+    al_start_timer(aliensBulletsTimer_.get());*/
     //al_start_timer(redUFOTimer_);
 }
 
 void Game::stopAllTimers()
 {
-    al_stop_timer(spaceshipTimer_);
-    al_stop_timer(spaceshipBulletsTimer_);
-    al_stop_timer(aliensWaveTimer_);
-    al_stop_timer(aliensShootingTimer_);
-    al_stop_timer(aliensBulletsTimer_);
+    for(auto &timer: timers_)
+    {
+        timer.stop();
+    }
+    /*al_stop_timer(spaceshipTimer_.get());
+    al_stop_timer(spaceshipBulletsTimer_.get());
+    al_stop_timer(aliensWaveTimer_.get());
+    al_stop_timer(aliensShootingTimer_.get());
+    al_stop_timer(aliensBulletsTimer_.get());*/
     //al_stop_timer(redUFOTimer_);
 }
 
@@ -523,20 +552,22 @@ void Game::drawAllBullets() const
 
 void Game::drawScore() const
 {
-    al_draw_bitmap(levelFlagBitmap_, 6, 15, 0);
-    std::stringstream ss1;
-    ss1 << level_;
-    al_draw_text(smallFont_, al_map_rgb(255, 0, 0), 39, 15, 0, ss1.str().c_str());
-    std::stringstream ss2;
-    ss2 << "Score " << score_;
-    al_draw_text(smallFont_, al_map_rgb(255, 0, 0), 6, 39, 0, ss2.str().c_str());
+    al_draw_bitmap(bitmaps_.get(BitmapID::LevelFlag).get(), 6, 15, 0);
+    al_draw_text(fonts_.get(FontID::Small).get(),
+                 al_map_rgb(255, 0, 0), 39, 15, 0,
+                 std::to_string(level_).c_str());
+    std::stringstream ss;
+    ss << "Score " << score_;
+    al_draw_text(fonts_.get(FontID::Small).get(), al_map_rgb(255, 0, 0),
+                 6, 39, 0, ss.str().c_str());
 }
 
 void Game::drawSpaceShipLives() const
 {
     for(int i = 0; i < spaceship_->getNumLives(); ++i)
     {
-        al_draw_bitmap(oneLifeBitmap_, 470 + i * (27 + 3), 51, 0);
+        al_draw_bitmap(bitmaps_.get(BitmapID::ShipLife).get(),
+                       470 + i * (27 + 3), 51, 0);
     }
 }
 
@@ -558,8 +589,10 @@ void Game::startPage(bool &startGame)
     while(!flag)
     {
         al_clear_to_color(al_map_rgb(0, 0, 0));
-        al_draw_bitmap_region(startPage_, sourceX * pageRegionWidth,
-        sourceY * pageRegionHeight, pageRegionWidth, pageRegionHeight, 0, 0, 0);
+        al_draw_bitmap_region(bitmaps_.get(BitmapID::StartPage).get(),
+                              sourceX * pageRegionWidth,
+                              sourceY * pageRegionHeight,
+                              pageRegionWidth, pageRegionHeight, 0, 0, 0);
         al_flip_display();
         ALLEGRO_EVENT events;
         al_wait_for_event(event_queue, &events);
@@ -595,20 +628,4 @@ void Game::startPage(bool &startGame)
     }
     al_destroy_timer(blinkTimer);
     al_destroy_event_queue(event_queue);
-}
-
-void Game::deleteBullets()
-{
-    if(!spaceshipBullets_.empty())
-    {
-        for(auto & b : spaceshipBullets_)
-            delete b;
-        spaceshipBullets_.clear();
-    }
-    if(!aliensBullets_.empty())
-    {
-        for(auto & b : aliensBullets_)
-            delete b;
-        aliensBullets_.clear();
-    }
 }

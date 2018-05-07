@@ -9,12 +9,22 @@ bool Allegro5Bitmap::loadFromFile(const std::__cxx11::string &fileName)
     auto bitmap = al_load_bitmap(fileName.c_str());
     if(!bitmap)
         return false;
-    auto ptr = std::make_unique<ALLEGRO_BITMAP>(bitmap, al_destroy_bitmap);
+    my_unique_ptr<ALLEGRO_BITMAP> ptr {bitmap, al_destroy_bitmap};
     mBitmap.swap(ptr);
     return true;
 }
 
 ALLEGRO_BITMAP *Allegro5Bitmap::get() const
 {
-    return mBitmap;
+    return mBitmap.get();
+}
+
+int Allegro5Bitmap::width() const
+{
+    return al_get_bitmap_width(mBitmap.get());
+}
+
+int Allegro5Bitmap::height() const
+{
+    return al_get_bitmap_height(mBitmap.get());
 }

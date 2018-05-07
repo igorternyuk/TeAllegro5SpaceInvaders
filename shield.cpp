@@ -1,14 +1,15 @@
 #include "shield.hpp"
 
-Shield::Shield(int x, int y, const charMatrix &arrangement, int wallWidth, int wallHeight,
-                 BitmapManager &bitmapManager,
-                 SampleManager &sampleManager)
+Shield::Shield(int x, int y, const charMatrix &arrangement,
+               int wallWidth, int wallHeight,
+               BitmapManager &bitmapManager,
+               SampleManager &sampleManager)
 {
     for(int i = 0; i < int(arrangement.size()); ++i)
     {
         for(int j = 0; j < int(arrangement[i].size()); ++j)
         {
-            WallType currWallType;
+            Wall::Type currWallType;
             switch(arrangement[i][j])
             {
                 case ' ' :
@@ -32,8 +33,9 @@ Shield::Shield(int x, int y, const charMatrix &arrangement, int wallWidth, int w
             }
 
             auto wall = std::make_unique<Wall>(currWallType, x + j * wallWidth,
-                                               y + i * wallHeight,
-                                               bitmapManager, sampleManager);
+                                               y + i * wallHeight, wallWidth,
+                                               wallHeight, bitmapManager,
+                                               sampleManager);
             walls_.push_back(std::move(wall));
         }
     }
@@ -47,7 +49,7 @@ void Shield::checkCollisions(std::vector<std::unique_ptr<Bullet>> &bullets)
         for(auto &wall : walls_)
         {
             if(wall->isDestroyed()) continue;
-            if(wall->isCollision(bullet))
+            if(wall->isCollision(bullet.get()))
             {
                 wall->damage();
                 bullet->explode();
