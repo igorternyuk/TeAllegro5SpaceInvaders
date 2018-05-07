@@ -6,20 +6,22 @@ void ResourceManager<Resource, Identifier>::load(Identifier id,
     std::unique_ptr<Resource> resource{std::make_unique<Resource>()};
     if(!resource->loadFromFile(fileName))
     {
-        throw std::runtime_error("TextureHolder::load - Failed to load " + fileName);
+        throw std::runtime_error("ResourceManager::load - Failed to load " + fileName);
     }
     // If loading successful, insert resource to map
     insertResource(id, resource);
 }
 
-template<class Resource, class Identifier, class Parameter>
-void load(Identifier id, const std::string &fileName, const Parameter &parameter)
+template<class Resource, class Identifier>
+template<class Parameter>
+void ResourceManager<Resource, Identifier>::load(Identifier id,
+     const std::string &fileName, const Parameter &parameter)
 {
     // Create and load resource
     std::unique_ptr<Resource> resource{std::make_unique<Resource>()};
     if(!resource->loadFromFile(fileName, parameter))
     {
-        throw std::runtime_error("TextureHolder::load - Failed to load " + fileName);
+        throw std::runtime_error("ResourceManager::load - Failed to load " + fileName);
     }
     // If loading successful, insert resource to map
     insertResource(id, resource);

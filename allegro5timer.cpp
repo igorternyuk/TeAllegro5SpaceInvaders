@@ -47,6 +47,11 @@ bool Allegro5Timer::isActive() const
     return al_get_timer_started(mTimer.get());
 }
 
+ALLEGRO_TIMER *Allegro5Timer::get() const
+{
+    return mTimer.get();
+}
+
 ALLEGRO_EVENT_SOURCE *Allegro5Timer::getEventSource() const
 {
     return al_get_timer_event_source(mTimer.get());

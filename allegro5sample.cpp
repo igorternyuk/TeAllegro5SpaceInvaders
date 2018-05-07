@@ -1,4 +1,5 @@
 #include "allegro5sample.hpp"
+#include <iostream>
 
 Allegro5Sample::Allegro5Sample()
 {}
@@ -8,7 +9,9 @@ bool Allegro5Sample::loadFromFile(const std::__cxx11::string &fileName)
     mSample.reset(nullptr);
     auto sound = al_load_sample(fileName.c_str());
     if(!sound)
+    {
         return false;
+    }
     my_unique_ptr<ALLEGRO_SAMPLE> ptr{ sound, al_destroy_sample };
     mSample.swap(ptr);
     return true;

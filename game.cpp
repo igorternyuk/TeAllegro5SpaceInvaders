@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <fstream>
 #include <sstream>
+#include <iostream>
 #include <stdexcept>
 
 Game::Game()
@@ -13,9 +14,9 @@ Game::Game()
     {
          throw std::runtime_error("Could not create Allegro Window");
     }
-
+    al_set_new_display_flags(ALLEGRO_RESIZABLE);
     al_set_window_position(display_, WINDOW_LEFT, WINDOW_TOP);
-    al_set_window_title(display_, WINDOW_TITLE);
+    al_set_window_title(display_, WINDOW_TITLE.c_str());
 
     loadBitmaps();
     loadFonts();
@@ -44,8 +45,8 @@ void Game::run()
 {
     ALLEGRO_KEYBOARD_STATE keyState;
     ALLEGRO_EVENT_QUEUE *event_queue = al_create_event_queue();
-    for(auto &timer: timers_){
-        al_register_event_source(event_queue, timer.second.getEventSource());
+    for(auto &pair: timers_){
+        al_register_event_source(event_queue, pair.second->getEventSource());
     }
     /*al_register_event_source(event_queue, al_get_timer_event_source(spaceshipTimer_));
     al_register_event_source(event_queue, al_get_timer_event_source(spaceshipBulletsTimer_));
@@ -114,7 +115,7 @@ void Game::run()
         }
         else if(events.type == ALLEGRO_EVENT_TIMER)
         {
-            if(events.timer.source == spaceshipTimer_)
+            if(events.timer.source == timers_.at(TimerID::spaceShip).get()->get())
             {
                 if(al_key_down(&keyState, ALLEGRO_KEY_LEFT))
                 {
@@ -127,13 +128,13 @@ void Game::run()
                         spaceship_->move(Direction::RIGHT);
                 }
             }
-            else if(events.timer.source == spaceshipBulletsTimer_)
+            else if(events.timer.source == timers_.at(TimerID::spaceShipBullets).get()->get())
             {
                 moveSpaceshipBullets();
-                baffles_->checkCollisions(spaceshipBullets_);
+                shield_->checkCollisions(spaceshipBullets_);
                 aliensWave_->checkCollisions(spaceshipBullets_, score_);
             }
-            else if(events.timer.source == aliensWaveTimer_)
+            else if(events.timer.source == timers_.at(TimerID::alienWave).get()->get())
             {
                 aliensWave_->move();
                 ++redNFO_ticker_;
@@ -150,14 +151,15 @@ void Game::run()
                 if(aliensWave_->isTouchPlanet())
                     isGameOver_ = true;
             }
-            else if(events.timer.source == aliensShootingTimer_)
+            else if(events.timer.source == timers_.at(TimerID::alienWaveShooting).get()->get())
             {
+                std::cout << "Aline wave is shooting" << std::endl;
                 aliensWave_->shoot(aliensBullets_);
             }
-            else if(events.timer.source == aliensBulletsTimer_)
+            else if(events.timer.source == timers_.at(TimerID::alienBullets).get()->get())
             {
                 moveAliensBullets();
-                baffles_->checkCollisions(aliensBullets_);
+                shield_->checkCollisions(aliensBullets_);
             }
             //Удаляем взорвавшиеся снаряды чтобы слишком не накапливались в векторах
             auto spaceship_bullets_iterator =
@@ -196,7 +198,7 @@ void Game::run()
                            0, 0, 0);
             drawScore();
             drawSpaceShipLives();
-            baffles_->draw();
+            shield_->draw();
             spaceship_->draw();
             aliensWave_->draw();
             redUFO_->draw();
@@ -217,16 +219,28 @@ void Game::run()
     stopAllTimers();
 }
 
-bool Game::loadSettings(const std::string &pathToSettingsFile, std::string &pathToSprite,
-     int &characterWidth, int &characterHeight, charMatrix &aliensArrangement,
-     std::string &spaceshipBulletPath, int &spaceShipBulletWidth, int &spaceShipBulletHeight,
-     std::string &alienBulletPath, int &alienBulletWidth, int &alienBulletHeight,
-     std::string &pathToWallImg, int &wallWidth, int &wallHeight, charMatrix &wallsArrangement)
+bool Game::loadSettings()
 {
+    static const std::string pathToSettingsFile { "settings.txt" };
     bool result = false;
-    enum loadState {SPRITE_PATH, CHARACTER_WIDTH, CHARACTER_HEIGHT, ALIENS_ARRANGEMENT,
-    SPACESHIP_BULLET_PATH, SPACESHIP_BULLET_WIDTH, SPACESHIP_BULLET_HEIGHT, ALIEN_BULLET_PATH,
-    ALIEN_BULLET_WIDTH, ALIEN_BULLET_HEIGHT, WALL_IMG_PATH, WALL_WIDTH, WALL_HEIGHT, WALLS_ARRANGEMENT};
+    enum loadState
+    {
+        SPRITE_PATH,
+        CHARACTER_WIDTH,
+        CHARACTER_HEIGHT,
+        ALIENS_ARRANGEMENT,
+        SPACESHIP_BULLET_PATH,
+        SPACESHIP_BULLET_WIDTH,
+        SPACESHIP_BULLET_HEIGHT,
+        ALIEN_BULLET_PATH,
+        ALIEN_BULLET_WIDTH,
+        ALIEN_BULLET_HEIGHT,
+        WALL_IMG_PATH,
+        WALL_WIDTH,
+        WALL_HEIGHT,
+        WALLS_ARRANGEMENT
+    };
+
     loadState state = SPRITE_PATH;
     std::ifstream fi(pathToSettingsFile);
     if(!aliensArrangement.empty())
@@ -318,11 +332,11 @@ bool Game::loadSettings(const std::string &pathToSettingsFile, std::string &path
                     break;
                 case CHARACTER_WIDTH :
                     ss << line;
-                    ss >> characterWidth;
+                    ss >> heroWidth;
                     break;
                 case CHARACTER_HEIGHT :
                     ss << line;
-                    ss >> characterHeight;
+                    ss >> heroHeight;
                     break;
                 case ALIENS_ARRANGEMENT :
                     aliensArrangement.push_back(line);
@@ -370,7 +384,8 @@ bool Game::loadSettings(const std::string &pathToSettingsFile, std::string &path
     }
     else
     {
-        al_show_native_message_box(nullptr, nullptr, nullptr, "Could not open the settings file", nullptr, 0);
+        al_show_native_message_box(nullptr, nullptr, nullptr,
+                                   "Could not open the settings file", nullptr, 0);
         result = false;
     }
     return result;
@@ -404,7 +419,7 @@ void Game::loadSamples()
     samples_.load(SampleID::Bgm, PATH_TO_BACKGROUND_MUSIC);
     samples_.load(SampleID::Shot, PATH_TO_SHOT_SOUND);
     samples_.load(SampleID::Explosion, PATH_TO_EXPLOSION);
-    al_reserve_samples(50);
+    al_reserve_samples(4);
 }
 
 void Game::createTimers()
@@ -417,50 +432,75 @@ void Game::createTimers()
     my_unique_ptr<ALLEGRO_TIMER> aliensBulletsTimer_;*/
 
     //Создаем таймеры
-    Allegro5Timer spaceshipTimer(SPACESHIP_TIMER_TIMEOUT);
-    timers_.insert(std::make_pair(TimerID::spaceShip, spaceshipTimer));
-    spaceshipTimer_ = al_create_timer(SPACESHIP_TIMER_TIMEOUT);
-    spaceshipBulletsTimer_ = al_create_timer(SPACESHIP_BULLETS_TIMER_TIMEOUT);
-    aliensWaveTimer_ = al_create_timer(ALIENS_WAVE_TIMER_TIMEOUT);
-    aliensBulletsTimer_ = al_create_timer(ALIENS_BULLETS_TIMER_TIMEOUT);
-    aliensShootingTimer_ = al_create_timer(ALIENS_SHOOTING_TIMER_TIMEOUT);
+    auto spaceshipTimer = std::make_unique<Allegro5Timer>(SPACESHIP_TIMER_TIMEOUT);
+    timers_.insert(std::make_pair(TimerID::spaceShip, std::move(spaceshipTimer)));
+
+    auto spaceshipBulletsTimer = std::make_unique<Allegro5Timer>(SPACESHIP_BULLETS_TIMER_TIMEOUT);
+    timers_.insert(std::make_pair(TimerID::spaceShipBullets, std::move(spaceshipBulletsTimer)));
+
+    auto aliensWaveTimer = std::make_unique<Allegro5Timer>(ALIENS_WAVE_TIMER_TIMEOUT);
+    timers_.insert(std::make_pair(TimerID::alienWave, std::move(aliensWaveTimer)));
+
+    auto aliensBulletsTimer = std::make_unique<Allegro5Timer>(ALIENS_BULLETS_TIMER_TIMEOUT);
+    timers_.insert(std::make_pair(TimerID::alienBullets, std::move(aliensBulletsTimer)));
+
+    auto aliensShootingTimer = std::make_unique<Allegro5Timer>(ALIENS_SHOOTING_TIMER_TIMEOUT);
+    timers_.insert(std::make_pair(TimerID::alienWaveShooting, std::move(aliensShootingTimer)));
 }
 
 void Game::createGameObjects()
 {
-    std::string pathToSprite;
-    int characterWidth, characterHeight;
-    charMatrix aliensArrangement;
-    std::string spaceshipBulletPath;
-    int spaceShipBulletWidth, spaceShipBulletHeight;
-    std::string alienBulletPath;
-    int alienBulletWidth, alienBulletHeight;
-    std::string pathToWallImg;
-    int wallWidth, wallHeight;
-    charMatrix wallsArrangement;
     //Загружаем настройки
-    loadSettings(PATH_TO_SETTINGD_FILE, pathToSprite, characterWidth, characterHeight, aliensArrangement,
-    spaceshipBulletPath, spaceShipBulletWidth, spaceShipBulletHeight, alienBulletPath,
-    alienBulletWidth, alienBulletHeight, pathToWallImg, wallWidth, wallHeight, wallsArrangement);
-    //Создаем корабль
-    spaceship_ = new Hero(CharacterType::SPACESHIP, INIT_SPACESHIP_X, INIT_SPACESHIP_Y,
-    SPACESHIP_VELOCITY, 0, Direction::RIGHT, SPACESHIP_LIVES_NUMBER, BULLET_VELOCITY, pathToSprite,
-    characterWidth, characterHeight, spaceshipBulletPath, spaceShipBulletWidth, spaceShipBulletHeight,
-    shot_, explosion_);
-    //Создаем волну инопланетян
-    aliensWave_ = new AliensWave(ALIENS_WAVE_X, ALIENS_WAVE_Y, aliensArrangement,
-    ALIENS_VERTICAL_OFFSET, ALIENS_HORIZONTAL_OFFSET, ALIENS_VELOCITY_X, ALIENS_VELOCITY_Y,
-    Direction::RIGHT, TOP_LIMIT, LEFT_LIMIT, BOTTOM_LIMIT, RIGHT_LIMIT, level_ + 1,
-    pathToSprite, characterWidth , characterHeight, BULLET_VELOCITY, alienBulletPath,
-    alienBulletWidth, alienBulletHeight, shot_, explosion_);
-    //Создаем красный кораблик
-    redUFO_ = new Hero(CharacterType::RED_UFO, ALIENS_WAVE_X, ALIENS_WAVE_Y,
-    RED_NFO_VELOCITY, 0, Direction::RIGHT, 1, BULLET_VELOCITY, pathToSprite, characterWidth + 9,
-    characterHeight, alienBulletPath, alienBulletWidth, alienBulletHeight, shot_, explosion_);
+    loadSettings();
+    //Create spaceship
+
+    spaceship_ = std::make_unique<Hero>(Hero::Type::SPACESHIP,
+                          INIT_SPACESHIP_X, INIT_SPACESHIP_Y,
+                          SPACESHIP_VELOCITY, 0, Direction::RIGHT,
+                          heroWidth, heroHeight, SPACESHIP_LIVES_NUMBER,
+                          BULLET_VELOCITY, bitmaps_, samples_);
+
+    //Create alien wave
+    /*
+    explicit AliensWave(int initX, int initY, const charMatrix &arrangement,
+                        int vStep, int hStep, int velocity_x, int velocity_y,
+                        Direction dir, int topLimit, int leftLimit,
+                        int bottomLimit, int rightLimit, int strenth,
+                        int a_width, int a_height,
+                        int bulletVelocity, BitmapManager &bitmapManager,
+                        SampleManager &sampleManager);
+*/
+    aliensWave_ = std::make_unique<AliensWave>(ALIENS_WAVE_X, ALIENS_WAVE_Y,
+                           aliensArrangement, ALIEN_WAVE_VERTICAL_STEP,
+                           ALIEN_WAVE_HORIZONTAL_STEP, ALIENS_VELOCITY_X,
+                           ALIENS_VELOCITY_Y, Direction::RIGHT, TOP_LIMIT,
+                           LEFT_LIMIT, BOTTOM_LIMIT, RIGHT_LIMIT, level_ + 1,
+                           heroWidth , heroHeight,
+                           BULLET_VELOCITY, bitmaps_, samples_);
+
+    /*
+    explicit Hero(Type type, int x, int y, int velX,
+                  int velY, Direction dir, int width, int height,
+                  int numLives, int bulletVelocity,
+                  BitmapManager &bitmapManager,
+                  SampleManager &sampleManager);
+*/
+    //Create the red NFO
+    redUFO_ = std::make_unique<Hero>(Hero::Type::RED_UFO, ALIENS_WAVE_X,
+                             ALIENS_WAVE_Y, RED_NFO_VELOCITY, 0, Direction::RIGHT,
+                             heroWidth + 9, heroHeight, 1, BULLET_VELOCITY,
+                             bitmaps_, samples_);
     redUFO_->hide();
-    //Создаем щиты
-    baffles_ = new Shield(FIRST_BAFFLE_LEFT, FIRST_BAFFLE_TOP, wallsArrangement,
-                          pathToWallImg, wallWidth, wallHeight, explosion_);
+    //Create shield
+    /*
+    explicit Shield(int x, int y, const charMatrix &arrangement,
+                    int wallWidth, int wallHeight,
+                     BitmapManager &bitmapManager,
+                     SampleManager &sampleManager);
+*/
+    shield_ = std::make_unique<Shield>(FIRST_BAFFLE_LEFT, FIRST_BAFFLE_TOP,
+                                       wallsArrangement, wallWidth, wallHeight,
+                                       bitmaps_, samples_);
 }
 
 void Game::moveSpaceshipBullets()
@@ -516,9 +556,9 @@ void Game::prepareNewGame(int level)
 
 void Game::startAllTimers()
 {
-    for(auto &timer: timers)
+    for(auto &pair: timers_)
     {
-        timer.start();
+        pair.second->start();
     }
     /*al_start_timer(spaceshipTimer_.get());
     al_start_timer(spaceshipBulletsTimer_.get());
@@ -530,9 +570,9 @@ void Game::startAllTimers()
 
 void Game::stopAllTimers()
 {
-    for(auto &timer: timers_)
+    for(auto &pair: timers_)
     {
-        timer.stop();
+        pair.second->stop();
     }
     /*al_stop_timer(spaceshipTimer_.get());
     al_stop_timer(spaceshipBulletsTimer_.get());

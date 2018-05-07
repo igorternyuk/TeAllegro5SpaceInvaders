@@ -31,8 +31,8 @@ private:
         SPACESHIP_LIVES_NUMBER = 3,
         ALIENS_WAVE_X = 39,
         ALIENS_WAVE_Y = 140,
-        ALIENS_HORIZONTAL_OFFSET = 3,
-        ALIENS_VERTICAL_OFFSET = 5,
+        ALIEN_WAVE_HORIZONTAL_STEP = 3,
+        ALIEN_WAVE_VERTICAL_STEP = 5,
         ALIENS_VELOCITY_X = 8,
         ALIENS_VELOCITY_Y = 16,
         LEFT_LIMIT = 39,
@@ -49,7 +49,6 @@ private:
     const std::string WINDOW_TITLE = "SpaceInviders";
     const std::string GAME_PAUSED_TEXT = "GAME PAUSED";
     const std::string LOST_MESSAGE = "YOU LOST";
-    const std::string PATH_TO_SETTINGD_FILE = "settings.txt";
     int redNFO_ticker_ = 0;
     const int MAX_RED_NFO_DELAY = 100;
     int randDelay_ = rand() % MAX_RED_NFO_DELAY;
@@ -74,13 +73,13 @@ private:
         alienBullets
     };
 
-    std::map<TimerID, Allegro5Timer> timers_;
+    std::map<TimerID, std::unique_ptr<Allegro5Timer>> timers_;
     ALLEGRO_SAMPLE_INSTANCE *backgroundInstance_;
 
     std::unique_ptr<Hero> spaceship_;
     std::unique_ptr<Hero> redUFO_;
     std::unique_ptr<AliensWave> aliensWave_;
-    std::unique_ptr<Shield> baffles_;
+    std::unique_ptr<Shield> shield_;
     std::vector<std::unique_ptr<Bullet>> spaceshipBullets_;
     std::vector<std::unique_ptr<Bullet>> aliensBullets_;
     bool isGameStarted_ = false;
@@ -89,13 +88,21 @@ private:
     int level_ = 1;
     int score_ = 0;
 
+    //Settings
+    std::string pathToSprite;
+    int heroWidth, heroHeight;
+    charMatrix aliensArrangement;
+    std::string spaceshipBulletPath;
+    int spaceShipBulletWidth, spaceShipBulletHeight;
+    std::string alienBulletPath;
+    int alienBulletWidth, alienBulletHeight;
+    std::string pathToWallImg;
+    int wallWidth, wallHeight;
+    charMatrix wallsArrangement;
+
 private:
     void prepareNewGame(int level);
-    bool loadSettings(const std::string &pathToSettingsFile, std::string &pathToSprite,
-         int &characterWidth, int &characterHeight, charMatrix &aliensArrangement,
-         std::string &spaceshipBulletPath, int &spaceShipBulletWidth, int &spaceShipBulletHeight,
-         std::string &alienBulletPath, int &alienBulletWidth, int &alienBulletHeight,
-         std::string &pathToWallImg, int &wallWidth, int &wallHeight, charMatrix &wallsArrangement);
+    bool loadSettings();
     void loadBitmaps();
     void loadFonts();
     void loadSamples();

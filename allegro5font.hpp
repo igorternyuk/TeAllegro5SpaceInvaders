@@ -9,7 +9,7 @@ class Allegro5Font
 {
 public:
     explicit Allegro5Font();
-    bool loadFromFile(const std::string &fileName, int size = 24);
+    bool loadFromFile(const std::string &fileName, const int &size = 24);
     ALLEGRO_FONT* get() const;
 private:
     my_unique_ptr<ALLEGRO_FONT> mFont;

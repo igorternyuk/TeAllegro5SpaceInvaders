@@ -39,6 +39,10 @@ Allegro5Initializer::Allegro5Initializer()
     {
         throw std::runtime_error("Could not install audio");
     }
+
+    if(!al_init_acodec_addon()){
+        throw std::runtime_error("Could not initialize acodec addon");
+    }
 }
 
 Allegro5Initializer::~Allegro5Initializer()
